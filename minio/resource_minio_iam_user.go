@@ -50,11 +50,21 @@ func resourceMinioIAMUser() *schema.Resource {
 			},
 			"secret": {
 				Type:     schema.TypeString,
-				Computed: true,
+				Optional: true,
 			},
 			"tags": tagsSchema(),
 		},
 	}
+}
+
+func getSecret(d *schema.ResourceData) string {
+	secret, hasSecret := d.GetOk("secret")
+	if hasSecret {
+		_ = d.Set("update_secret", "true")
+		return secret.(string)
+	}
+	key, _ := generateSecretAccessKey()
+	return string(key)
 }
 
 func minioCreateUser(d *schema.ResourceData, meta interface{}) error {
@@ -62,7 +72,8 @@ func minioCreateUser(d *schema.ResourceData, meta interface{}) error {
 	iamUserConfig := IAMUserConfig(d, meta)
 
 	accessKey := iamUserConfig.MinioIAMName
-	secretKey, _ := generateSecretAccessKey()
+	//secretKey, _ := generateSecretAccessKey()
+	secretKey := getSecret(d)
 
 	err := iamUserConfig.MinioAdmin.AddUser(string(accessKey), string(secretKey))
 	if err != nil {
@@ -78,7 +89,8 @@ func minioUpdateUser(d *schema.ResourceData, meta interface{}) error {
 
 	iamUserConfig := IAMUserConfig(d, meta)
 
-	secretKey, _ := generateSecretAccessKey()
+	//secretKey, _ := generateSecretAccessKey()
+	secretKey := getSecret(d)
 
 	if d.HasChange(iamUserConfig.MinioIAMName) {
 		on, nn := d.GetChange(iamUserConfig.MinioIAMName)
